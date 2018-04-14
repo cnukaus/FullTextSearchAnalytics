@@ -30,7 +30,7 @@ for folder, subs, files in os.walk(rootdir):
                  
                         p.add(x)
                         #print x
-                        all_fileext.append(x)
+                        all_fileext.append(x[:1000])
                    #print (p)
 
                   
@@ -39,7 +39,7 @@ for folder, subs, files in os.walk(rootdir):
                   df=pd.DataFrame([counter.values(),counter.keys()])
                   df2=df.transpose()
                   df2.columns=['cnt','dataname']
-                  df2['filesource']=filename
+                  df2['filesource']=os.path.join(folder, filename)
                   df3=df3.append(df2)
                   #cols = df2.columns.tolist()
                   #cols=cols[-1:] + cols[:-1]
