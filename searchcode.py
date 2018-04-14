@@ -39,7 +39,7 @@ for folder, subs, files in os.walk(rootdir):
                   df=pd.DataFrame([list(counter.values()),list(counter.keys())])
                   df2=df.transpose()
                   df2.columns=['cnt','dataname']
-                  df2['filesource']=filename
+                  df2['filesource']=os.path.join(folder, filename)
                   df3=df3.append(df2)
 
                   all_fileext=[]
