@@ -70,7 +70,7 @@ if __name__ == "__main__": ## If we are not importing this:
 
 	print (rows)
 	for row in rows:
-		f.write(row)
+		f.write(row+'\n')
 		f.flush()
 		#To make sure that you're data is written to disk, use file.flush() followed by os.fsync(file.fileno()).
 		#(prt1, readlist) = search("https://explorer.xdag.io/block/"+row)
