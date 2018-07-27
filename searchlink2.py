@@ -11,10 +11,14 @@ def search(url):
 		#print (tag.nextsibling.nextsibling)
 	storeList=[]
 	balanceList=[]
+	flag=0
 
 	for eliminate in soup.find_all('h4'):
-		if eliminate.text='Block as transaction':
-		    return('',storeList)	#Block as transaction need to be removed
+		if eliminate.text=='Block as address':
+			flag=flag+1
+
+	if flag==0:
+		return('',storeList)	#Block as transaction need to be removed
 
 
 	for tag in soup.find_all('a', href=True):
@@ -67,6 +71,8 @@ if __name__ == "__main__": ## If we are not importing this:
 	print (rows)
 	for row in rows:
 		f.write(row)
+		f.flush()
+		#To make sure that you're data is written to disk, use file.flush() followed by os.fsync(file.fileno()).
 		#(prt1, readlist) = search("https://explorer.xdag.io/block/"+row)
 		
 
