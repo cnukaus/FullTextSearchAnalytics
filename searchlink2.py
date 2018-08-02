@@ -11,6 +11,7 @@ def calprice():
 def search(url):
 
 	
+	print ("search "+url)
 	html = urllib2.urlopen(url)
 	soup = BS(html,'html.parser')
 		#print (tag.next_element)
