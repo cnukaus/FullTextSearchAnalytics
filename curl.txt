@@ -1,0 +1,9 @@
+
+webapp@14195:~/xdag1/client$ telnet 127.0.0.1 16005
+Trying 127.0.0.1...
+telnet: Unable to connect to remote host: Connection refused
+
+
+./xdag -d -p 188.214.130.18:16775 -P 188.214.130.18:16775:4096:0.5:1:1:200:0.5 -rpc-enable -rpc-port 16005
+
+ curl -X POST --data '{"method":"xdag_get_block_info", "params":["dfKdPEdqac23INOdR/juDDY1LKFRePFk"], "id":1}' localhost:16005

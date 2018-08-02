@@ -2,8 +2,15 @@ from bs4 import BeautifulSoup as BS
 import urllib.request as urllib2
 import re
 
+def calprice():
+	pass
+#(?<= {6})\d*\.?\d* regex
+#( )\1+
+#(?<=( )\1+)\d*\.?\d* regex
+#curl -X POST --data '{"method":"xdag_get_block_info", "params":["dfKdPEdqac23INOdR/juDDY1LKFRePFk"], "id":1}' localhost:16005
 def search(url):
 
+	
 	html = urllib2.urlopen(url)
 	soup = BS(html,'html.parser')
 		#print (tag.next_element)
@@ -36,12 +43,13 @@ def search(url):
 
 		if tag.text=="Balance":
 			balanceList.append(tag.find_next('span').text)
-	print (balanceList)
+			print (url+","+tag.find_next('span').text)
+	#print (storeList)
 	if len(balanceList)==0:
 		balance=''
 	else:
 		balance=balanceList[0]
-	
+	#print ("bal:"+balance)
 	return (balance, storeList)#.replace("<td>",u"余额:").replace("<a href=>\"/block","Addr:"))#nextsibling.text)
 			
 	#soup.find("th", text="Balance").find_next_sibling("td").text
@@ -54,24 +62,34 @@ def search(url):
 	elem[0].text'''
 
 if __name__ == "__main__": ## If we are not importing this:
-	print ("searching")
 	f = open("addrlist.csv", 'r+')
 	data = f.read()
 	rows = data.split('\n')
+	newrows=[]
 
 	for row in rows:
-		readlist=[row]  #G6jTFKRkFlKj67zIdOZJ4jMjuhCe6oOg  BLOCK as address, fails
+		readlist=[]  #G6jTFKRkFlKj67zIdOZJ4jMjuhCe6oOg  BLOCK as address, fails
 		
 		(prt1, readlist) = search("https://explorer.xdag.io/block/"+row)
 		
 		for NewItem in readlist:
-			if NewItem not in rows:
-				rows.append(NewItem)
+			if NewItem not in newrows:
+				newrows.append(NewItem)
 
 	print (rows)
-	for row in rows:
-		f.write(row+'\n')
-		f.flush()
+	for row in newrows:
+		try:
+			readlist=[]  #G6jTFKRkFlKj67zIdOZJ4jMjuhCe6oOg  BLOCK as address, fails
+			
+			(prt1, readlist) = search("https://explorer.xdag.io/block/"+row)
+
+			for NewItem in readlist:
+				if NewItem not in rows and NewItem not in newrows:
+					rows.append(NewItem)
+					print ("final:"+NewItem)
+					f.write(NewItem+'\n')
+		except:
+			pass	
 		#To make sure that you're data is written to disk, use file.flush() followed by os.fsync(file.fileno()).
 		#(prt1, readlist) = search("https://explorer.xdag.io/block/"+row)
 		
