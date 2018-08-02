@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup as BS
 import urllib.request as urllib2
 import re
+import datetime
 
 def calprice():
 	pass
@@ -11,48 +12,56 @@ def calprice():
 def search(url):
 
 	
-	print ("search "+url)
-	html = urllib2.urlopen(url)
-	soup = BS(html,'html.parser')
-		#print (tag.next_element)
-		#print (tag.nextsibling)
-		#print (tag.nextsibling.nextsibling)
+	global result
+	global dt
+	#print ("search "+url)
 	storeList=[]
 	balanceList=[]
-	flag=0
-
-	for eliminate in soup.find_all('h4'):
-		if eliminate.text=='Block as address':
-			flag=flag+1
-
-	if flag==0:
-		return('',storeList)	#Block as transaction need to be removed
-
-
-	for tag in soup.find_all('a', href=True):
-		if tag['href'].startswith("/block/") == True:
-		   storeList.append(tag['href'][7:]) #remove string head '/block/'
-
-
-	for tag in soup.find_all("div"):
+	try:
 		
-		tds = tag.find_all("td") # you get list
-		#print('text:', tds[0].get_text()) # get element [0] from list
-		#print('value:', tds[1].get_text())
+		html = urllib2.urlopen(url)
+		soup = BS(html,'html.parser')
+			#print (tag.next_element)
+			#print (tag.nextsibling)
+			#print (tag.nextsibling.nextsibling)
 		
+		flag=0
+
+		for eliminate in soup.find_all('h4'):
+			if eliminate.text=='Block as address':
+				flag=flag+1
+
+		if flag==0:
+			return('',storeList)	#Block as transaction need to be removed
 
 
-		if tag.text=="Balance":
-			balanceList.append(tag.find_next('span').text)
-			print (url+","+tag.find_next('span').text)
-	#print (storeList)
-	if len(balanceList)==0:
-		balance=''
-	else:
-		balance=balanceList[0]
-	#print ("bal:"+balance)
-	return (balance, storeList)#.replace("<td>",u"余额:").replace("<a href=>\"/block","Addr:"))#nextsibling.text)
+		for tag in soup.find_all('a', href=True):
+			if tag['href'].startswith("/block/") == True:
+			   storeList.append(tag['href'][7:]) #remove string head '/block/'
+
+
+		for tag in soup.find_all("div"):
 			
+			tds = tag.find_all("td") # you get list
+			#print('text:', tds[0].get_text()) # get element [0] from list
+			#print('value:', tds[1].get_text())
+			
+
+
+			if tag.text=="Balance":
+				balanceList.append(tag.find_next('span').text)
+				result.append(url+","+tag.find_next('span').text,dt)
+				f = open("result.csv", 'r+')
+				f.write(url+","+tag.find_next('span').text,dt+'\n')
+		#print (storeList)
+		if len(balanceList)==0:
+			balance=''
+		else:
+			balance=balanceList[0]
+		#print ("bal:"+balance)
+		return (balance, storeList)#.replace("<td>",u"余额:").replace("<a href=>\"/block","Addr:"))#nextsibling.text)
+	except:
+		return ('', storeList)			
 	#soup.find("th", text="Balance").find_next_sibling("td").text
 			#b.body.findAll(text=re.compile('Trump wins .+? uncertain future'))
 	
@@ -67,6 +76,8 @@ if __name__ == "__main__": ## If we are not importing this:
 	data = f.read()
 	rows = data.split('\n')
 	newrows=[]
+	dt=datetime.datetime.today().strftime('%Y-%m-%d')
+	result=[]
 
 	for row in rows:
 		readlist=[]  #G6jTFKRkFlKj67zIdOZJ4jMjuhCe6oOg  BLOCK as address, fails
