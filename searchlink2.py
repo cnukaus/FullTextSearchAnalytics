@@ -1,13 +1,28 @@
 from bs4 import BeautifulSoup as BS
 import urllib.request as urllib2
-import re
-import datetime
 
-def calprice():
-	pass
+import datetime
+import re
+def calcprice(filename):
+	
+	try:
+		f = open(filename, 'r')
+		data = f.read()
+		rows = data.split('\n')
+
+		for row in rows:
+			print (re.search("(?: 1+)\d*\.?\d*",row)+","+re.search("\d{4}-\d{2}-\d{2}",row))
+
+	except Exception as e:
+    	print(e)
+	
+
+
 #(?<= {6})\d*\.?\d* regex
+
 #( )\1+
 #(?<=( )\1+)\d*\.?\d* regex
+# +  +means as many preceding letter as possible
 #curl -X POST --data '{"method":"xdag_get_block_info", "params":["dfKdPEdqac23INOdR/juDDY1LKFRePFk"], "id":1}' localhost:16005
 def search(url):
 
@@ -72,6 +87,7 @@ def search(url):
 	elem[0].text'''
 
 if __name__ == "__main__": ## If we are not importing this:
+	calcprice('dfk balance.txt')
 	f = open("addrlist.csv", 'r+')
 	data = f.read()
 	rows = data.split('\n')
