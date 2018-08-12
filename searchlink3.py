@@ -1,22 +1,62 @@
 from bs4 import BeautifulSoup as BS
 import urllib.request as urllib2
-<<<<<<< HEAD
-
 import datetime
 import re
-def calcprice(filename):
+import csv
+# To add FirstTrans/LastTrans
+# To add multi-thread for crawling networked adddresses
+# To add historic data store
+
+def calcprice(filename,pricefile):
+	
+	
+	pricedata=list(csv.reader(open(pricefile)))
+
+
 	
 	try:
 		f = open(filename, 'r')
 		data = f.read()
 		rows = data.split('\n')
 
+		totalCost=0
+		totalQuantity=0
+
 		for row in rows:
-			print (re.search("(?: 1+)\d*\.?\d*",row)+","+re.search("\d{4}-\d{2}-\d{2}",row))
+			try:
+					if "input" in row:
+							sign=1
+					elif "output" in row:
+							sign=-1
+					else:
+							sign=0
+
+					quantity=''
+					text= re.search("(?<=  )[\d.]+(?=  )",row).group()
+
+					quantity=str(text).lstrip()
+					date=re.search("\d{4}-\d{2}-\d{2}",row).group()
+					#print ("result)"+text+","+date)
+					for pricepoint in pricedata:
+						index=-1
+						if datetime.datetime.strptime(date,'%Y-%m-%d')>= datetime.datetime.strptime(pricepoint[1],'%d/%m/%Y'):
+							index=pricedata.index(pricepoint)
+						if index>-1 and datetime.datetime.strptime(date,'%Y-%m-%d') < datetime.datetime.strptime(pricedata[index+1][1],'%d/%m/%Y'):
+							cost=sign*float(pricedata[index][0])*float(quantity)
+							totalCost=totalCost+cost
+							totalQuantity=totalQuantity+sign*float(quantity)
+							#print ("cost "+str(cost))
+			except Exception as e2:
+				print(e2)
+
+
+
 
 	except Exception as e:
-    	print(e)
+			print(e)
 	
+	print ("Avg cost is %s, of %s Tokens"%(totalCost/totalQuantity,totalQuantity))
+
 
 
 #(?<= {6})\d*\.?\d* regex
@@ -24,16 +64,7 @@ def calcprice(filename):
 #( )\1+
 #(?<=( )\1+)\d*\.?\d* regex
 # +  +means as many preceding letter as possible
-=======
-import re
-import datetime
-
-def calprice():
-	pass
-#(?<= {6})\d*\.?\d* regex
-#( )\1+
-#(?<=( )\1+)\d*\.?\d* regex
->>>>>>> d6453c7a2a7f83d9b8d51851de25a62081bec153
+# d6453c7a2a7f83d9b8d51851de25a62081bec153
 #curl -X POST --data '{"method":"xdag_get_block_info", "params":["dfKdPEdqac23INOdR/juDDY1LKFRePFk"], "id":1}' localhost:16005
 def search(url):
 
@@ -98,10 +129,8 @@ def search(url):
 	elem[0].text'''
 
 if __name__ == "__main__": ## If we are not importing this:
-<<<<<<< HEAD
-	calcprice('dfk balance.txt')
-=======
->>>>>>> d6453c7a2a7f83d9b8d51851de25a62081bec153
+	calcprice('dfk balance.txt','pricefile.csv')
+'''
 	f = open("addrlist.csv", 'r+')
 	data = f.read()
 	rows = data.split('\n')
@@ -135,5 +164,5 @@ if __name__ == "__main__": ## If we are not importing this:
 		#To make sure that you're data is written to disk, use file.flush() followed by os.fsync(file.fileno()).
 		#(prt1, readlist) = search("https://explorer.xdag.io/block/"+row)
 		
-
+'''
 
