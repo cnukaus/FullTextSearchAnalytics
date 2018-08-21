@@ -3,6 +3,7 @@ import urllib.request as urllib2
 import datetime
 import re
 import csv
+import ReadGoogle
 # To add FirstTrans/LastTrans
 # To add multi-thread for crawling networked adddresses
 # To add historic data store
@@ -46,8 +47,8 @@ def calcprice(filename,pricefile):
 							totalCost=totalCost+cost
 							totalQuantity=totalQuantity+sign*float(quantity)
 							#print ("cost "+str(cost))
-			except Exception as e2:
-				print(e2)
+			except Exception as msg_1013:
+				print(msg_1013)
 
 
 
