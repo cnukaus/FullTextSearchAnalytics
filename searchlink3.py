@@ -4,6 +4,7 @@ import datetime
 import re
 import csv
 import ReadGoogle
+
 # To add FirstTrans/LastTrans
 # To add multi-thread for crawling networked adddresses
 # To add historic data store
@@ -78,6 +79,7 @@ def search(url):
 	try:
 		
 		html = urllib2.urlopen(url)
+
 		soup = BS(html,'html.parser')
 			#print (tag.next_element)
 			#print (tag.nextsibling)
@@ -85,6 +87,7 @@ def search(url):
 		
 		flag=0
 
+		
 		for eliminate in soup.find_all('h4'):
 			if eliminate.text=='Block as address':
 				flag=flag+1
@@ -100,17 +103,21 @@ def search(url):
 
 		for tag in soup.find_all("div"):
 			
-			tds = tag.find_all("td") # you get list
+			#tds = tag.find_all("td") early Aug18 # you get list
 			#print('text:', tds[0].get_text()) # get element [0] from list
 			#print('value:', tds[1].get_text())
+			#print ("...."+tag.text+"....")
 			
 
 
-			if tag.text=="Balance":
-				balanceList.append(tag.find_next('span').text)
-				result.append(url+","+tag.find_next('span').text,dt)
-				f = open("result.csv", 'r+')
-				f.write(url+","+tag.find_next('span').text,dt+'\n')
+			if tag.text=="Balance":#tag.text.startswith("Balance"):
+				bal=tag.find_next('span').text.replace(',','')
+				print (url+","+bal)
+				balanceList.append(bal)
+				result.append(url+","+bal,dt)
+				f = open("c:\\result.csv", 'r+')
+				f.write(url+","+bal,dt+'\n')
+				#print (url+","+tag.find_next('span').text,dt+'\n')
 		#print (storeList)
 		if len(balanceList)==0:
 			balance=''
@@ -129,12 +136,12 @@ def search(url):
 	# <th scope="row">Balance</th><td>0.950165999 
 	elem[0].text'''
 
-if __name__ == "__main__": ## If we are not importing this:
-	calcprice('dfk balance.txt','pricefile.csv')
-'''
+def readcsv():
+
 	f = open("addrlist.csv", 'r+')
 	data = f.read()
 	rows = data.split('\n')
+
 	newrows=[]
 	dt=datetime.datetime.today().strftime('%Y-%m-%d')
 	result=[]
@@ -144,6 +151,40 @@ if __name__ == "__main__": ## If we are not importing this:
 		
 		(prt1, readlist) = search("https://explorer.xdag.io/block/"+row)
 		
+		for NewItem in readlist:
+			if NewItem not in newrows:
+				newrows.append(NewItem)
+
+	
+	for row in newrows:
+		try:
+			readlist=[]  #G6jTFKRkFlKj67zIdOZJ4jMjuhCe6oOg  BLOCK as address, fails
+			
+			(prt1, readlist) = search("https://explorer.xdag.io/block/"+row)
+
+			for NewItem in readlist:
+				if NewItem not in rows and NewItem not in newrows:
+					rows.append(NewItem)
+					print ("final:"+NewItem)
+					f.write(NewItem+'\n')
+		except:
+			pass	
+		#To make sure that you're data is written to disk, use file.flush() followed by os.fsync(file.fileno()).
+		#(prt1, readlist) = search("https://explorer.xdag.io/block/"+row)
+		
+if __name__ == "__main__": ## If we are not importing this:
+#	calcprice('dfk balance.txt','pricefile.csv')
+
+	rows = ReadGoogle.ReadGoogle('1we9iYgXDIpsPCnp5JpQBAOOyrGy-r4zNZWl2gjpiNQM','top 2000 wallets')
+	newrows=[]
+	dt=datetime.datetime.today().strftime('%Y-%m-%d')
+	result=[]
+	for row in rows:
+		readlist=[]  #G6jTFKRkFlKj67zIdOZJ4jMjuhCe6oOg  BLOCK as address, fails
+		
+		(prt1, readlist) = search("https://explorer.xdag.io/block/"+row)
+		
+		#print(row+","+prt1)
 		for NewItem in readlist:
 			if NewItem not in newrows:
 				newrows.append(NewItem)
@@ -162,8 +203,7 @@ if __name__ == "__main__": ## If we are not importing this:
 					f.write(NewItem+'\n')
 		except:
 			pass	
-		#To make sure that you're data is written to disk, use file.flush() followed by os.fsync(file.fileno()).
-		#(prt1, readlist) = search("https://explorer.xdag.io/block/"+row)
-		
-'''
+
+	
+
 
