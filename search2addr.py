@@ -13,6 +13,8 @@ from mysql.connector import Error
 # To add multi-thread for crawling networked adddresses
 # To add historic data store
 
+THRESHOLD=10000
+
 def calcprice(filename,pricefile):
 	
 	
@@ -78,6 +80,7 @@ def search(suffix,wallet):
 	global result
 	global dt
 	global db
+	global THRESHOLD
 	#print ("search "+url)
 	storeList=[]
 	balanceList=[]
@@ -101,11 +104,17 @@ def search(suffix,wallet):
 			return('',storeList)	#Block as transaction need to be removed
 
 
-		for tag in soup.find_all('a', href=True):
-			if tag['href'].startswith("/block/") == True:
-			   print(tag['href'][7:]+str(tag.parent.findNext('td').contents[0]))
-			   storeList.append(tag['href'][7:]) #remove string head '/block/'
+		#print(soup.find('body').findChildren())
+		try:
+			for tag in soup.find_all('a', href=True):
 
+				if tag['href'].startswith("/block/") == True and wallet not in tag['href'] and float(str(tag.parent.findNext('td').contents[0]))>THRESHOLD:
+					print("%s,%d"%(tag['href'][7:],float(str(tag.parent.findNext('td').contents[0]))))
+					storeList.append(tag['href'][7:]) #remove string head '/block/'
+
+
+		except Exception as err:
+			print("error"+str(err))
 
 		for tag in soup.find_all("div"):
 			
@@ -119,16 +128,17 @@ def search(suffix,wallet):
 			if tag.text=="Balance":#tag.text.startswith("Balance"):
 				bal=tag.find_next('span').text.replace(',','')
 				balanceList.append(bal)
-				write_db(bal,wallet,dt,db,'xdag')
+				
+				#write_db(bal,wallet,dt,db,'xdag')
+				
 				#f = open("c:\\result.csv", 'r+')
 				#f.write(url+","+bal,dt+'\n')
 				#print (url+","+tag.find_next('span').text,dt+'\n')
-		print ("ok1")
 		if len(balanceList)==0:
 			balance=''
 		else:
 			balance=balanceList[0]
-		print ("bal:")
+		print (wallet+" bal:" +str(balanceList))
 		return (balance, storeList)#.replace("<td>",u"余额:").replace("<a href=>\"/block","Addr:"))#nextsibling.text)
 	except:
 		return ('', storeList)			
@@ -205,6 +215,8 @@ def get_info_db(sql,addr,version=0,date='1990-01-01'):
     return balance
 def readcsv():
 
+	global THRESHOLD
+	global db
 	f = open("addrlist.csv", 'r+')
 	data = f.read()
 	rows = data.split('\n')
@@ -223,29 +235,38 @@ def readcsv():
 				newrows.append(NewItem)
 
 	
+	print("newlist")
+	print(newrows)
 	for row in newrows:
 		try:
 			readlist=[]  #G6jTFKRkFlKj67zIdOZJ4jMjuhCe6oOg  BLOCK as address, fails
 			
 			(prt1, readlist) = search("https://explorer.xdag.io/block/",row)
+			if len(prt1)>0:
+				if float(str(tag.parent.findNext('td').contents[0]))>THRESHOLD:
+					write_db(prt1,row,dt,db,'xdag')
+
+			print("DERIVED"+prt1+" "+row)
 
 			for NewItem in readlist:
 				if NewItem not in rows and NewItem not in newrows:
 					rows.append(NewItem)
-					print ("final:"+NewItem)
 					f.write(NewItem+'\n')
-		except:
-			pass	
+					
+		except Exception as err:
+			print ("newrows err"+str(err))	
 		#To make sure that you're data is written to disk, use file.flush() followed by os.fsync(file.fileno()).
 		#(prt1, readlist) = search("https://explorer.xdag.io/block/"+row)
 		
 if __name__ == "__main__": ## If we are not importing this:
 #	calcprice('dfk balance.txt','pricefile.csv')
 
-	search("https://explorer.xdag.io/block/","YvcUHwI9iw2kGpXFwI9qAeUy+ni6D2+g")
 	db=db_connect()
+	search("https://explorer.xdag.io/block/","YvcUHwI9iw2kGpXFwI9qAeUy+ni6D2+g")
+	readcsv()
+	'''
 	dt=datetime.datetime.now()
-	rows = ReadGoogle.ReadGoogle('1we9iYgXDIpsPCnp5JpQBAOOyrGy-r4zNZWl2gjpiNQM','top 2000 wallets')
+	rows = ['R2eJ1N88Zsu3u74qzo+IILkrTg9RkprK']
 	newrows=[]
 	dt=datetime.datetime.today().strftime('%Y-%m-%d')
 	result=[]
@@ -272,7 +293,7 @@ if __name__ == "__main__": ## If we are not importing this:
 					print ("final:"+NewItem)
 					f.write(NewItem+'\n')
 		except:
-			pass	
+			pass	'''
 
 	
 
