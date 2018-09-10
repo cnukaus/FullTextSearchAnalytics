@@ -8,11 +8,16 @@ import configparser
 import mysql.connector
 from mysql.connector import Error
 import queue
+import os
+import sys
+
 
 
 # To add FirstTrans/LastTrans
+# turn page
+# re-insert duplicate again
 # To add multi-thread for crawling networked adddresses
-# To add historic data store
+
 
 THRESHOLD=3000
 
@@ -155,7 +160,7 @@ def search(suffix,wallet):
 def db_connect():
     
     config = configparser.ConfigParser()
-    config.read('dbconfig.ini')
+    config.read(os.path.join(sys.path[0],'dbconfig.ini'))
     
 
     try:
@@ -167,7 +172,7 @@ def db_connect():
             print('Connected to MySQL database')
             return dbconn
     except Exception as err:
-        print ("error"+err)
+        print ("error"+str(err))
 
 def write_db(balance,address,dt,conn,asset_type='xdag'):
     query = "INSERT INTO balance_history(asset_type,balance,address,create_time) " \
@@ -218,7 +223,7 @@ def readcsv():
 # how to threading and loop until no new addr? while true: dedup a list, move detected to another list
 	global THRESHOLD
 	global db
-	f = open("addrlist.csv", 'r+')
+	f = open(os.path.join(sys.path[0],"addrlist.csv"), 'r+')
 	data = f.read()
 	rows = data.split('\n')
 
@@ -239,6 +244,7 @@ def readcsv():
 	print("newlist")
 	print(newrows)
 	q=queue.Queue()
+	written=[]
 	for row in newrows:
 		try:
 			readlist=[]  #G6jTFKRkFlKj67zIdOZJ4jMjuhCe6oOg  BLOCK as address, fails
@@ -246,13 +252,14 @@ def readcsv():
 			(prt1, readlist) = search("https://explorer.xdag.io/block/",row)
 			if len(prt1)>0:
 				print("Gen2 bal:"+prt1+" "+row)
-				if float(prt1)>THRESHOLD:
+				if float(prt1)>THRESHOLD and row not in written:
 					write_db(prt1,row,dt,db,'xdag')
+					written.append(row)
 
 			print("DERIVED"+prt1+" "+row)
 
 			
-			for NewItem in readlist:
+			for NewItem in list(set(readlist)):
 				if NewItem not in rows and NewItem not in newrows:
 					q.put(NewItem)
 					rows.append(NewItem)
@@ -262,8 +269,9 @@ def readcsv():
 						pop=q.get(False)
 						print("queue search "+pop)
 						(prt1, readlist) = search("https://explorer.xdag.io/block/",pop)
-						if len(prt1)>0 and float(prt1)>THRESHOLD:
+						if len(prt1)>0 and float(prt1)>THRESHOLD and pop not in written:
 								write_db(prt1,pop,dt,db,'xdag')
+								written.append(pop)
 								print("Gen4 bal:"+prt1+" "+pop)
 						for gen4 in readlist:
 								if gen4 not in rows and gen4 not in newrows:
