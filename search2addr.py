@@ -7,13 +7,14 @@ import ReadGoogle
 import configparser
 import mysql.connector
 from mysql.connector import Error
+import queue
 
 
 # To add FirstTrans/LastTrans
 # To add multi-thread for crawling networked adddresses
 # To add historic data store
 
-THRESHOLD=10000
+THRESHOLD=3000
 
 def calcprice(filename,pricefile):
 	
@@ -109,7 +110,7 @@ def search(suffix,wallet):
 			for tag in soup.find_all('a', href=True):
 
 				if tag['href'].startswith("/block/") == True and wallet not in tag['href'] and float(str(tag.parent.findNext('td').contents[0]))>THRESHOLD:
-					print("%s,%d"%(tag['href'][7:],float(str(tag.parent.findNext('td').contents[0]))))
+					#print("%s,%d"%(tag['href'][7:],float(str(tag.parent.findNext('td').contents[0]))))
 					storeList.append(tag['href'][7:]) #remove string head '/block/'
 
 
@@ -214,7 +215,7 @@ def get_info_db(sql,addr,version=0,date='1990-01-01'):
     pass
     return balance
 def readcsv():
-
+# how to threading and loop until no new addr? while true: dedup a list, move detected to another list
 	global THRESHOLD
 	global db
 	f = open("addrlist.csv", 'r+')
@@ -237,21 +238,48 @@ def readcsv():
 	
 	print("newlist")
 	print(newrows)
+	q=queue.Queue()
 	for row in newrows:
 		try:
 			readlist=[]  #G6jTFKRkFlKj67zIdOZJ4jMjuhCe6oOg  BLOCK as address, fails
 			
 			(prt1, readlist) = search("https://explorer.xdag.io/block/",row)
 			if len(prt1)>0:
-				if float(str(tag.parent.findNext('td').contents[0]))>THRESHOLD:
+				print("Gen2 bal:"+prt1+" "+row)
+				if float(prt1)>THRESHOLD:
 					write_db(prt1,row,dt,db,'xdag')
 
 			print("DERIVED"+prt1+" "+row)
 
+			
 			for NewItem in readlist:
 				if NewItem not in rows and NewItem not in newrows:
+					q.put(NewItem)
 					rows.append(NewItem)
 					f.write(NewItem+'\n')
+			while not q.empty():
+					try:
+						pop=q.get(False)
+						print("queue search "+pop)
+						(prt1, readlist) = search("https://explorer.xdag.io/block/",pop)
+						if len(prt1)>0 and float(prt1)>THRESHOLD:
+								write_db(prt1,pop,dt,db,'xdag')
+								print("Gen4 bal:"+prt1+" "+pop)
+						for gen4 in readlist:
+								if gen4 not in rows and gen4 not in newrows:
+									q.put(gen4)
+									#print("queue added "+gen4)
+								
+								
+					except Exception as Empty:
+						print("queue err"+str(Empty))
+						continue
+					q.task_done()
+		    #for job in iter(q.get(), None):
+						
+				
+
+
 					
 		except Exception as err:
 			print ("newrows err"+str(err))	
@@ -262,7 +290,7 @@ if __name__ == "__main__": ## If we are not importing this:
 #	calcprice('dfk balance.txt','pricefile.csv')
 
 	db=db_connect()
-	search("https://explorer.xdag.io/block/","YvcUHwI9iw2kGpXFwI9qAeUy+ni6D2+g")
+	#search("https://explorer.xdag.io/block/","YvcUHwI9iw2kGpXFwI9qAeUy+ni6D2+g")
 	readcsv()
 	'''
 	dt=datetime.datetime.now()
