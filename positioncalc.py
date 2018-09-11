@@ -29,8 +29,28 @@ def db_connect(config):
         #print ("dberr"+str(err))
     
     
-def returnTopX():
-	pass
+def returnTopX(conn,asset,num,version=0):
+	sql="select balance, createtime from balance_history where asset_type='"+asset+"'"
+	if date>'1990-01-01':
+		
+		sql=sql+" and date>"
+	sql=sql+" order by CreateTime desc"
+	try:
+		
+	    cursor = dbconn.cursor()
+	    cursor.execute(sql)
+
+	    result=[cursor.fetchone() for i in range(cursor.rowcount) if i<2]
+        
+	    if result is not None:
+	    	return result[version]
+	    	
+	    else:
+	    	return None
+	
+	except Exception as err:
+		print (str(err))
+
 	return listTop[wallet,balance]
 
 def getbalance(conn,addr,version=0,date='1990-01-01'):
