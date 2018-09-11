@@ -1,40 +1,61 @@
-import ReadGoogle
 import mysql.connector
 from mysql.connector import Error
+import configparser
 
+def db_connect(config):
+    #https://stackoverflow.com/questions/42906665/import-my-database-connection-with-python
+    
+
+    try:
+        
+        dbconn = mysql.connector.connect(host = config['mysqlDB']['host'],
+                           database = config['mysqlDB']['database'],user = config['mysqlDB']['user'],
+                           password = config['mysqlDB']['password']
+                           )
+
+        
+        if dbconn.is_connected():
+            print('Connected to MySQL database')
+            return dbconn
+        
+    
+    except mysql.connector.Error as e:
+        if e.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+            print("Passwort // Username")
+        elif e.errno == errorcode.ER_BAD_DB_ERROR:
+            print("DataBase does not exist")
+        else:
+            print(e)
+        #print ("dberr"+str(err))
+    
+    
 def returnTopX():
 	pass
 	return listTop[wallet,balance]
 
-def getbalance(addr,version=0,date='1990-01-01'):
+def getbalance(conn,addr,version=0,date='1990-01-01'):
 	# version=0 means latest
-	sql=""
+	sql="select balance, createtime from balance_history where address='"+addr+"'"
 	if date>'1990-01-01':
-		sql="select balance, createtime from BalanceHistory where address='"+add+"'"
+		
 		sql=sql+" and date>"
 	sql=sql+" order by CreateTime desc"
 	try:
-		dbconn = mysql.connector.connect(host='localhost',database='python_mysql',user='root',password='secret')
-		if conn.is_connected():
-			print('Connected to MySQL database')
-			cursor = dbconn.cursor()
-			cursor.execute(sql)
-			results = cursor.fetchall
-			for row in results:
-				print (row[0])
+		
+	    cursor = dbconn.cursor()
+	    cursor.execute(sql)
 
-
+	    result=[cursor.fetchone() for i in range(cursor.rowcount) if i<2]
+        
+	    if result is not None:
+	    	return result[version]
+	    	
+	    else:
+	    	return None
 	
-	
-            if count(queryresult)>=version:
-
-					queryresult[version]
 	except Exception as err:
-		print (err)
+		print (str(err))
 
-
-	pass
-	return balance
 
 '''
 created table ranking on CherryServer
@@ -54,27 +75,20 @@ CREATE TABLE BalanceHistory
 def changedetect(PctChangedOld,PctChangedRetain): 
 #?minor change is not a change? Regular inteval shouldnt be 1st priority for writing to disk, as we want to know big change ASAP
 	saveCurrent_toStack()
-	oldValueGone=compareIfChange(pctThreshold,stack,LastPersisted,1000)[2]
-	avgValueGone=compareIfChange(pctThreshold,stack,LastPersisted,1000)[3]
-	OldValueofRetained=compareIfChange(pctThreshold,stack,LastPersisted,1000)[5]
-	DeltaOfRetained=compareIfChange(pctThreshold,stack,LastPersisted,1000)[6]
+	compare_result=compareIfChange(pctThreshold,stack,LastPersisted,1000)
 	
-	if avgValueGone/oldValueGone < PctChangeOld or OldValueofRetained :# when is a siginifcant change? avg 5%?
-		persist()
+	if compare_result['avgValueGone']/compare_result['OldValueGone'] < PctChangeOld \
+	or compare_result['avgValueRetained']/compare_result['OldValueofRetained'] < PctChangedRetain :# when is a siginifcant change? avg 5%?
+		persist("reduced hold")
 
-def compareIfChange(pctThreshold,listTop,listPrev,totalCap=0): # ?need to detect when ranking changed? streamline??
+def compareIfChange(conn,pctThreshold,listTop,listPrev,totalCap=0): # ?need to detect when ranking changed? streamline??
 	'''
 	1 gone, 2 new, Max, Min, Avg
 	'''
 	listRetained=list(set(listPrev).intersection(listTop))
 	listGone=list(set(listPrev)-set(listRetained))
 	listNew=list(set(listTop)-set(listRetained))
-	'''for listitem in listTop:
-		if listitem in listPrev:
-			listRetained.add(listitem)
-		else:
-			listNew.add(listitem)'''
-	listGone = list(set(listPrev)-set(listTop))
+
 	GoneTotalsize=0
 	GonesizeHistory=0
 	NewTotalsize=0
@@ -83,13 +97,13 @@ def compareIfChange(pctThreshold,listTop,listPrev,totalCap=0): # ?need to detect
 
 	for listitem in listGone:
 		#PYTHON how to evaluate a function so None can be processed in arithmatic
-		GoneTotalsize+=getbalance(listitem,0)
-		GonesizeHistory+=getbalance(listitem,1) # However board moving could be due to new bought more, old no sale
+		GoneTotalsize+=getbalance(conn,listitem,0)
+		GonesizeHistory+=getbalance(conn,listitem,1) # However board moving could be due to new bought more, old no sale
 	for listitem in listNew:
-		NewTotalsize+=getbalance(listitem,0)
+		NewTotalsize+=getbalance(conn,listitem,0)
 	for listitem in listRetained:
-		RetainedTotalsize+=getbalance(listitem,0)
-		RetainedsizeHistory+=getbalance(listitem,1)
+		RetainedTotalsize+=getbalance(conn,listitem,0)
+		RetainedsizeHistory+=getbalance(conn,listitem,1)
 
 
 
@@ -100,7 +114,14 @@ def compareIfChange(pctThreshold,listTop,listPrev,totalCap=0): # ?need to detect
 
 
 
-	return rangecounted,goneCount,OldValueGone,avgValueGone, avgValueNew, OldValueofRetained,DeltaOfRetained 
-#返回 跟踪的Top数，已消失钱包数，下板大户的下板前均值，下板后均值，新加入大户的平均值，仍在板者的之前均值，仍在板者均值变动
+	return {'range':rangecounted,
+	'gone':goneCount,'OldValueGone':OldValueGone,'avgValueGone':avgValueGone, 
+	'avgValueNew':avgValueNew, 'OldValueofRetained':OldValueofRetained,
+	'avgValueRetained':avgValueRetained}
+#返回 跟踪的Top数，已消失钱包数，下板大户的下板前均值，下板后均值，新加入大户的平均值，仍在板者的之前均值，仍在板者now均值
 if __name__ == '__main__':
-    compareIfChange(0.05,ReadGoogle.ReadGoogle('1we9iYgXDIpsPCnp5JpQBAOOyrGy-r4zNZWl2gjpiNQM','newlist'),ReadGoogle.ReadGoogle('1we9iYgXDIpsPCnp5JpQBAOOyrGy-r4zNZWl2gjpiNQM','top 2000 wallets'),totalCap=0)
+    
+	config = configparser.ConfigParser()
+	config.read('dbconfig.ini')
+	dbconn=db_connect(config)
+	print(getbalance(dbconn,'4DtNq71TeY9rdp/QX63mpNsEUu+xNSBv',0))#compareIfChange(dbconn,0.05,['4DtNq71TeY9rdp/QX63mpNsEUu+xNSBv',],['dfKdPEdqac23INOdR/juDDY1LKFRePFk','U54RHG+snKt+rzpWVv/iN3ZOaXx3MZCJ'],totalCap=0)
