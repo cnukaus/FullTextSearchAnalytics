@@ -10,6 +10,7 @@ from mysql.connector import Error
 import queue
 import os
 import sys
+from positioncalc import getbalance
 
 
 
@@ -174,15 +175,20 @@ def db_connect():
     except Exception as err:
         print ("error"+str(err))
 
-def write_db(balance,address,dt,conn,asset_type='xdag'):
-    query = "INSERT INTO balance_history(asset_type,balance,address,create_time) " \
+def write_db(conn,asset_type,address,balance,version,dt):
+    query0 = "UPDATE balance_history set version=version+1 where asset_type=%s and address=%s "
+    args0 =(asset_type,address)
+    
+    query = "INSERT INTO balance_history(asset_type,address,balance,version,create_time) " \
             "VALUES(%s,%s,%s,%s)"
-    args = (asset_type, balance,address,dt)
+    args = (asset_type, address,balance,version,dt)
+
  
     try:
         
  
         cursor = conn.cursor()
+        cursor.execute(query0, args0)
         cursor.execute(query, args)
  
         if cursor.lastrowid:
@@ -228,8 +234,10 @@ def readcsv():
 	rows = data.split('\n')
 
 	newrows=[]
-	dt=datetime.datetime.today().strftime('%Y-%m-%d')
+	dt=datetime.datetime.now()#.strftime('%Y-%m-%d')
 	result=[]
+	q=queue.Queue()
+	written=[]
 
 	for row in rows:
 		readlist=[]  #G6jTFKRkFlKj67zIdOZJ4jMjuhCe6oOg  BLOCK as address, fails
@@ -237,14 +245,17 @@ def readcsv():
 		(prt1, readlist) = search("https://explorer.xdag.io/block/",row)
 		
 		for NewItem in readlist:
+			v0=getbalance(db,'xdag',row,0)
+			if len(prt1)>0 and row not in written and (v0 is None or float(prt1)!=v0[0]): #either not in db, or value changed
+					write_db(db,'xdag',row,float(prt1),0,dt)  
+					written.append(row)
 			if NewItem not in newrows:
 				newrows.append(NewItem)
 
 	
 	print("newlist")
 	print(newrows)
-	q=queue.Queue()
-	written=[]
+	
 	for row in newrows:
 		try:
 			readlist=[]  #G6jTFKRkFlKj67zIdOZJ4jMjuhCe6oOg  BLOCK as address, fails
@@ -253,7 +264,7 @@ def readcsv():
 			if len(prt1)>0:
 				print("Gen2 bal:"+prt1+" "+row)
 				if float(prt1)>THRESHOLD and row not in written:
-					write_db(prt1,row,dt,db,'xdag')
+					write_db(db,'xdag',row,float(prt1),0,dt)  
 					written.append(row)
 
 			print("DERIVED"+prt1+" "+row)
@@ -270,7 +281,7 @@ def readcsv():
 						print("queue search "+pop)
 						(prt1, readlist) = search("https://explorer.xdag.io/block/",pop)
 						if len(prt1)>0 and float(prt1)>THRESHOLD and pop not in written:
-								write_db(prt1,pop,dt,db,'xdag')
+								write_db(db,'xdag',pop,float(prt1),0,dt)
 								written.append(pop)
 								print("Gen4 bal:"+prt1+" "+pop)
 						for gen4 in readlist:

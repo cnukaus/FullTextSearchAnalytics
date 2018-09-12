@@ -2,6 +2,77 @@ import mysql.connector
 from mysql.connector import Error
 import configparser
 
+
+def search(suffix,wallet):
+
+	url=suffix+wallet
+	global result
+	global dt
+	global db
+	global THRESHOLD
+	#print ("search "+url)
+	storeList=[]
+	balanceList=[]
+	try:
+		
+		html = urllib2.urlopen(url)
+
+		soup = BS(html,'html.parser')
+			#print (tag.next_element)
+			#print (tag.nextsibling)
+			#print (tag.nextsibling.nextsibling)
+		
+		flag=0
+
+		
+		for eliminate in soup.find_all('h4'):
+			if eliminate.text=='Block as address':
+				flag=flag+1
+
+		if flag==0:
+			return('',storeList)	#Block as transaction need to be removed
+
+
+		#print(soup.find('body').findChildren())
+		try:
+			for tag in soup.find_all('a', href=True):
+
+				if tag['href'].startswith("/block/") == True and wallet not in tag['href'] and float(str(tag.parent.findNext('td').contents[0]))>THRESHOLD:
+					#print("%s,%d"%(tag['href'][7:],float(str(tag.parent.findNext('td').contents[0]))))
+					storeList.append(tag['href'][7:]) #remove string head '/block/'
+
+
+		except Exception as err:
+			print("error"+str(err))
+
+		for tag in soup.find_all("div"):
+			
+			#tds = tag.find_all("td") early Aug18 # you get list
+			#print('text:', tds[0].get_text()) # get element [0] from list
+			#print('value:', tds[1].get_text())
+			#print ("...."+tag.text+"....")
+			
+
+
+			if tag.text=="Balance":#tag.text.startswith("Balance"):
+				bal=tag.find_next('span').text.replace(',','')
+				balanceList.append(bal)
+				
+				#write_db(bal,wallet,dt,db,'xdag')
+				
+				#f = open("c:\\result.csv", 'r+')
+				#f.write(url+","+bal,dt+'\n')
+				#print (url+","+tag.find_next('span').text,dt+'\n')
+		if len(balanceList)==0:
+			balance=''
+		else:
+			balance=balanceList[0]
+		print (wallet+" bal:" +str(balanceList))
+		return (balance, storeList)#.replace("<td>",u"余额:").replace("<a href=>\"/block","Addr:"))#nextsibling.text)
+	except:
+		return ('', storeList)			
+
+
 def db_connect(config):
     #https://stackoverflow.com/questions/42906665/import-my-database-connection-with-python
     
@@ -42,7 +113,7 @@ def returnTopX(conn,asset,num,version=0):
 
 	    result=[cursor.fetchone() for i in range(cursor.rowcount) if i<2]
         
-	    if result == None:
+	    if result is not None:
 	    	return result[version]
 	    	
 	    else:
@@ -62,12 +133,12 @@ def getbalance(conn,asset,addr,version=0,date='1990-01-01'):
 	sql=sql+" order by version,create_Time desc"
 	try:
 		
-	    cursor = dbconn.cursor()
+	    cursor = conn.cursor()
 	    cursor.execute(sql)
 	    result=cursor.fetchone()
 	    #result=[cursor.fetchone() for i in range(cursor.rowcount)]
         
-	    if result == None:
+	    if result is not None:
 	    	return result
 	    	
 	    else:
@@ -101,7 +172,7 @@ def changedetect(PctChangedOld,PctChangedRetain):
 	or compare_result['avgValueRetained']/compare_result['OldValueofRetained'] < PctChangedRetain :# when is a siginifcant change? avg 5%?
 		persist("reduced hold")
 
-def compareIfChange(conn,pctThreshold,listTop,listPrev,totalCap=0): # ?need to detect when ranking changed? streamline??
+def compareIfChange(conn,asset,pctThreshold,listTop,listPrev,totalCap=0): # ?need to detect when ranking changed? streamline??
 	'''
 	1 gone, 2 new, Max, Min, Avg
 	'''
@@ -123,38 +194,46 @@ def compareIfChange(conn,pctThreshold,listTop,listPrev,totalCap=0): # ?need to d
 		for listitem in listGone:
 			#PYTHON how to evaluate a function so None can be processed in arithmatic
 			print("item:"+str(listitem))
-			if getbalance(conn,'xdag',listitem,0) is None:
+			v0=getbalance(conn,'xdag',listitem,0)
+			if v0 is None:
 				pass
 			else:
 				gone_count+=1
-				GoneTotalsize+=getbalance(conn,'xdag',listitem,0)[0]
+				GoneTotalsize+=v0[0]
 
-			if getbalance(conn,'xdag',listitem,1) is None:
+			v1=getbalance(conn,'xdag',listitem,1)
+			if v1 is None:
 				pass
 			else:
-				print(getbalance(conn,'xdag',listitem,1))
+				print(v1)
 				g2_count+=1
-				GonesizeHistory+=getbalance(conn,'xdag',listitem,1)[0] # However board moving could be due to new bought more, old no sale
-		for listitem in listNew:
-			if getbalance(conn,'xdag',listitem,0) is None:
-				pass
-			else:
-				new_count+=1
-				NewTotalsize+=getbalance(conn,'xdag',listitem,0)[0]
+				GonesizeHistory+=v1[0] # However board moving could be due to new bought more, old no sale
+		for listitem in listNew: # NEW ITEM MAY NOT BE IN DATABASE
+			if asset=='xdag':
+				print("xdag")
+				(prt1, readlist) = search("https://explorer.xdag.io/block/",listitem)
+					
+				if len(prt1)>0:
+					new_count+=1
+					NewTotalsize+=float(prt1)
 		for listitem in listRetained:
-			if getbalance(conn,'xdag',listitem,0) is None:
+			print("itemRetain:"+str(listitem))
+			v0=getbalance(conn,'xdag',listitem,0)
+			if v0 is None:
 				pass
 			else:
 				retain_count+=1
-				RetainedTotalsize+=getbalance(conn,'xdag',listitem,0)[0]
+				RetainedTotalsize+=v0[0]
 
-			if getbalance(conn,'xdag',listitem,1) is None:
+			v1=getbalance(conn,'xdag',listitem,1)
+			if v1 is None:
 				pass
 			else:
 				retain_count+=1
-				RetainedsizeHistory+=getbalance(conn,'xdag',listitem,1)[0]
+				RetainedsizeHistory+=v1[0]
+		print("%d %d %d" ,gone_count,new_count,retain_count)
 		return_set={'range':new_count+retain_count,
-	'gone':gone_count,'OldValueGone':GonesizeHistory/g2_count,'avgValueGone':GoneTotalsiz/gone_count, 
+	'gone':gone_count,'OldValueGone':GonesizeHistory/g2_count,'avgValueGone':GoneTotalsize/gone_count, 
 	'avgValueNew':NewTotalsize/new_count, 'OldValueofRetained':RetainedsizeHistory/retain_count,
 	'avgValueRetained':RetainedTotalsize/retain_count}
 	except Exception as err:
@@ -168,7 +247,8 @@ def compareIfChange(conn,pctThreshold,listTop,listPrev,totalCap=0): # ?need to d
 
 
 
-	return return_set
+	else:
+		return return_set
 #返回 跟踪的Top数，已消失钱包数，下板大户的下板前均值，下板后均值，新加入大户的平均值，仍在板者的之前均值，仍在板者now均值
 if __name__ == '__main__':
     
@@ -176,4 +256,4 @@ if __name__ == '__main__':
 	config.read('dbconfig.ini')
 	dbconn=db_connect(config)
 	#print(getbalance(dbconn,'xdag','4DtNq71TeY9rdp/QX63mpNsEUu+xNSBv',0))
-	compareIfChange(dbconn,0.05,['4DtNq71TeY9rdp/QX63mpNsEUu+xNSBv',],['dfKdPEdqac23INOdR/juDDY1LKFRePFk','U54RHG+snKt+rzpWVv/iN3ZOaXx3MZCJ'],totalCap=0)
+	compareIfChange(dbconn,'xdag',0.05,['4DtNq71TeY9rdp/QX63mpNsEUu+xNSBv',],['dfKdPEdqac23INOdR/juDDY1LKFRePFk','U54RHG+snKt+rzpWVv/iN3ZOaXx3MZCJ'],totalCap=0)
