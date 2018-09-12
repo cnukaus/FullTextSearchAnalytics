@@ -30,11 +30,11 @@ def db_connect(config):
     
     
 def returnTopX(conn,asset,num,version=0):
-	sql="select balance, createtime from balance_history where asset_type='"+asset+"'"
+	sql="select balance, create_time from balance_history where asset_type='"+asset+"'"
 	if date>'1990-01-01':
 		
 		sql=sql+" and date>"
-	sql=sql+" order by CreateTime desc"
+	sql=sql+" order by create_time desc"
 	try:
 		
 	    cursor = dbconn.cursor()
@@ -42,7 +42,7 @@ def returnTopX(conn,asset,num,version=0):
 
 	    result=[cursor.fetchone() for i in range(cursor.rowcount) if i<2]
         
-	    if result is not None:
+	    if result == None:
 	    	return result[version]
 	    	
 	    else:
@@ -53,22 +53,22 @@ def returnTopX(conn,asset,num,version=0):
 
 	return listTop[wallet,balance]
 
-def getbalance(conn,addr,version=0,date='1990-01-01'):
+def getbalance(conn,asset,addr,version=0,date='1990-01-01'):
 	# version=0 means latest
-	sql="select balance, createtime from balance_history where address='"+addr+"'"
+	sql="select balance, create_time from balance_history where address='"+addr+"'and asset_type='"+asset+"' and version="+str(version)+""
 	if date>'1990-01-01':
 		
 		sql=sql+" and date>"
-	sql=sql+" order by CreateTime desc"
+	sql=sql+" order by version,create_Time desc"
 	try:
 		
 	    cursor = dbconn.cursor()
 	    cursor.execute(sql)
-
-	    result=[cursor.fetchone() for i in range(cursor.rowcount) if i<2]
+	    result=cursor.fetchone()
+	    #result=[cursor.fetchone() for i in range(cursor.rowcount)]
         
-	    if result is not None:
-	    	return result[version]
+	    if result == None:
+	    	return result
 	    	
 	    else:
 	    	return None
@@ -115,16 +115,50 @@ def compareIfChange(conn,pctThreshold,listTop,listPrev,totalCap=0): # ?need to d
 	RetainedTotalsize=0
 	RetainedsizeHistory=0
 
-	for listitem in listGone:
-		#PYTHON how to evaluate a function so None can be processed in arithmatic
-		GoneTotalsize+=getbalance(conn,listitem,0)
-		GonesizeHistory+=getbalance(conn,listitem,1) # However board moving could be due to new bought more, old no sale
-	for listitem in listNew:
-		NewTotalsize+=getbalance(conn,listitem,0)
-	for listitem in listRetained:
-		RetainedTotalsize+=getbalance(conn,listitem,0)
-		RetainedsizeHistory+=getbalance(conn,listitem,1)
+	gone_count=0 # maybe balance not in DB so count for avg would be different
+	g2_count=0
+	new_count=0
+	retain_count=0
+	try:
+		for listitem in listGone:
+			#PYTHON how to evaluate a function so None can be processed in arithmatic
+			print("item:"+str(listitem))
+			if getbalance(conn,'xdag',listitem,0) is None:
+				pass
+			else:
+				gone_count+=1
+				GoneTotalsize+=getbalance(conn,'xdag',listitem,0)[0]
 
+			if getbalance(conn,'xdag',listitem,1) is None:
+				pass
+			else:
+				print(getbalance(conn,'xdag',listitem,1))
+				g2_count+=1
+				GonesizeHistory+=getbalance(conn,'xdag',listitem,1)[0] # However board moving could be due to new bought more, old no sale
+		for listitem in listNew:
+			if getbalance(conn,'xdag',listitem,0) is None:
+				pass
+			else:
+				new_count+=1
+				NewTotalsize+=getbalance(conn,'xdag',listitem,0)[0]
+		for listitem in listRetained:
+			if getbalance(conn,'xdag',listitem,0) is None:
+				pass
+			else:
+				retain_count+=1
+				RetainedTotalsize+=getbalance(conn,'xdag',listitem,0)[0]
+
+			if getbalance(conn,'xdag',listitem,1) is None:
+				pass
+			else:
+				retain_count+=1
+				RetainedsizeHistory+=getbalance(conn,'xdag',listitem,1)[0]
+		return_set={'range':new_count+retain_count,
+	'gone':gone_count,'OldValueGone':GonesizeHistory/g2_count,'avgValueGone':GoneTotalsiz/gone_count, 
+	'avgValueNew':NewTotalsize/new_count, 'OldValueofRetained':RetainedsizeHistory/retain_count,
+	'avgValueRetained':RetainedTotalsize/retain_count}
+	except Exception as err:
+		print ("summary err"+str(err))
 
 
 
@@ -134,14 +168,12 @@ def compareIfChange(conn,pctThreshold,listTop,listPrev,totalCap=0): # ?need to d
 
 
 
-	return {'range':rangecounted,
-	'gone':goneCount,'OldValueGone':OldValueGone,'avgValueGone':avgValueGone, 
-	'avgValueNew':avgValueNew, 'OldValueofRetained':OldValueofRetained,
-	'avgValueRetained':avgValueRetained}
+	return return_set
 #返回 跟踪的Top数，已消失钱包数，下板大户的下板前均值，下板后均值，新加入大户的平均值，仍在板者的之前均值，仍在板者now均值
 if __name__ == '__main__':
     
 	config = configparser.ConfigParser()
 	config.read('dbconfig.ini')
 	dbconn=db_connect(config)
-	print(getbalance(dbconn,'4DtNq71TeY9rdp/QX63mpNsEUu+xNSBv',0))#compareIfChange(dbconn,0.05,['4DtNq71TeY9rdp/QX63mpNsEUu+xNSBv',],['dfKdPEdqac23INOdR/juDDY1LKFRePFk','U54RHG+snKt+rzpWVv/iN3ZOaXx3MZCJ'],totalCap=0)
+	#print(getbalance(dbconn,'xdag','4DtNq71TeY9rdp/QX63mpNsEUu+xNSBv',0))
+	compareIfChange(dbconn,0.05,['4DtNq71TeY9rdp/QX63mpNsEUu+xNSBv',],['dfKdPEdqac23INOdR/juDDY1LKFRePFk','U54RHG+snKt+rzpWVv/iN3ZOaXx3MZCJ'],totalCap=0)
