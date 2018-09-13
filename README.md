@@ -10,5 +10,6 @@ This script will search within a folder, find all files containing a keyword, an
 python "SearchCode.py" "folderPath" "keyword CaseInsensitive" "e:\result.csv"
 
 
+Search2addr.py is to search a xdag address list
 
 
