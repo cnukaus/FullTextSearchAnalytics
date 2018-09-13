@@ -243,12 +243,12 @@ def readcsv():
 		readlist=[]  #G6jTFKRkFlKj67zIdOZJ4jMjuhCe6oOg  BLOCK as address, fails
 		
 		(prt1, readlist) = search("https://explorer.xdag.io/block/",row)
-		
-		for NewItem in readlist:
-			v0=getbalance(db,'xdag',row,0)
-			if len(prt1)>0 and row not in written and (v0 is None or float(prt1)!=v0[0]): #either not in db, or value changed
+		v0=getbalance(db,'xdag',row,0)
+		if len(prt1)>0 and row not in written and (v0 is None or float(prt1)!=v0[0]): #either not in db, or value changed
 					write_db(db,'xdag',row,float(prt1),0,dt)  
 					written.append(row)
+			
+		for NewItem in readlist:
 			if NewItem not in newrows:
 				newrows.append(NewItem)
 
@@ -304,13 +304,37 @@ def readcsv():
 			print ("newrows err"+str(err))	
 		#To make sure that you're data is written to disk, use file.flush() followed by os.fsync(file.fileno()).
 		#(prt1, readlist) = search("https://explorer.xdag.io/block/"+row)
+def read1k():
+	global THRESHOLD
+	global db
+	f = open(os.path.join(sys.path[0],"addrlist.csv"), 'r+')
+	data = f.read()
+	rows = data.split('\n')
+
+	newrows=[]
+	dt=datetime.datetime.now()#.strftime('%Y-%m-%d')
+	result=[]
+	q=queue.Queue()
+	written=[]
+
+	for row in rows:
+		readlist=[]  #G6jTFKRkFlKj67zIdOZJ4jMjuhCe6oOg  BLOCK as address, fails
+		
+		(prt1, readlist) = search("https://explorer.xdag.io/block/",row)
+		v0=getbalance(db,'xdag',row,0)
+		if len(prt1)>0 and row not in written and (v0 is None or float(prt1)!=v0[0]): #either not in db, or value changed
+					write_db(db,'xdag',row,float(prt1),0,dt)  
+					written.append(row)
+			
+
+	
 		
 if __name__ == "__main__": ## If we are not importing this:
 #	calcprice('dfk balance.txt','pricefile.csv')
 
 	db=db_connect()
 	#search("https://explorer.xdag.io/block/","YvcUHwI9iw2kGpXFwI9qAeUy+ni6D2+g")
-	readcsv()
+	read1k()
 	'''
 	dt=datetime.datetime.now()
 	rows = ['R2eJ1N88Zsu3u74qzo+IILkrTg9RkprK']
