@@ -107,28 +107,23 @@ def db_connect(config):
     
     
 def returnTopX(conn,asset,num,version=0):
-	sql="select balance, create_time from balance_history where asset_type='"+asset+"'"
+	sql="select address,balance, create_time from balance_history where asset_type='"+asset+"' and version="+str(version)+" LIMIT "+str(num)
 	if date>'1990-01-01':
 		
 		sql=sql+" and date>"
-	sql=sql+" order by create_time desc"
+	sql=sql+" order by balance desc"
 	try:
 		
 	    cursor = dbconn.cursor(buffered=True)
 	    cursor.execute(sql)
 
-	    result=[cursor.fetchone() for i in range(cursor.rowcount) if i<2]
+	    result=[cursor.fetchone() for i in range(cursor.rowcount) if i<1000]
         
-	    if result is not None:
-	    	return result[version]
-	    	
-	    else:
-	    	return None
-	
+	    
 	except Exception as err:
 		print (str(err))
 
-	return listTop[wallet,balance]
+	return result[:][0:1]
 
 def getbalance(conn,asset,addr,version=0,date='1990-01-01'):
 	# version=0 means latest
@@ -264,5 +259,6 @@ if __name__ == '__main__':
 	config.read('dbconfig.ini')
 	dbconn=db_connect(config)
 	#print(getbalance(dbconn,'xdag','4DtNq71TeY9rdp/QX63mpNsEUu+xNSBv',0))
-	print(compareIfChange(dbconn,'xdag',0.05,['4DtNq71TeY9rdp/QX63mpNsEUu+xNSBv','dfKdPEdqac23INOdR/juDDY1LKFRePFk','J6lQA7JsxAZOoeNC/e5521CH3teE3hUm'],['dfKdPEdqac23INOdR/juDDY1LKFRePFk','U54RHG+snKt+rzpWVv/iN3ZOaXx3MZCJ'],totalCap=0))
+	#print(compareIfChange(dbconn,'xdag',0.05,['4DtNq71TeY9rdp/QX63mpNsEUu+xNSBv','dfKdPEdqac23INOdR/juDDY1LKFRePFk','J6lQA7JsxAZOoeNC/e5521CH3teE3hUm'],['dfKdPEdqac23INOdR/juDDY1LKFRePFk','U54RHG+snKt+rzpWVv/iN3ZOaXx3MZCJ'],totalCap=0))
+	print(returnTopX(dbconn,'xdag',1000,0))
 
