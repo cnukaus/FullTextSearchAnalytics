@@ -1,8 +1,12 @@
 import mysql.connector
 from mysql.connector import Error
 import configparser
+import urllib.request as urllib2
+from bs4 import BeautifulSoup as BS
 
+THRESHOLD=1
 
+# to write, 1000 history, then update
 def search(suffix,wallet):
 
 	url=suffix+wallet
@@ -10,7 +14,6 @@ def search(suffix,wallet):
 	global dt
 	global db
 	global THRESHOLD
-	#print ("search "+url)
 	storeList=[]
 	balanceList=[]
 	try:
@@ -24,16 +27,18 @@ def search(suffix,wallet):
 		
 		flag=0
 
-		
+		print ("search "+url)
+	
 		for eliminate in soup.find_all('h4'):
 			if eliminate.text=='Block as address':
 				flag=flag+1
 
 		if flag==0:
+			print("no result")
 			return('',storeList)	#Block as transaction need to be removed
 
 
-		#print(soup.find('body').findChildren())
+		print("htl"+str(html))#print(soup.find('body').findChildren())
 		try:
 			for tag in soup.find_all('a', href=True):
 
@@ -69,7 +74,8 @@ def search(suffix,wallet):
 			balance=balanceList[0]
 		print (wallet+" bal:" +str(balanceList))
 		return (balance, storeList)#.replace("<td>",u"余额:").replace("<a href=>\"/block","Addr:"))#nextsibling.text)
-	except:
+	except Exception as err:
+		print("err"+str(err))
 		return ('', storeList)			
 
 
@@ -108,7 +114,7 @@ def returnTopX(conn,asset,num,version=0):
 	sql=sql+" order by create_time desc"
 	try:
 		
-	    cursor = dbconn.cursor()
+	    cursor = dbconn.cursor(buffered=True)
 	    cursor.execute(sql)
 
 	    result=[cursor.fetchone() for i in range(cursor.rowcount) if i<2]
@@ -131,15 +137,18 @@ def getbalance(conn,asset,addr,version=0,date='1990-01-01'):
 		
 		sql=sql+" and date>"
 	sql=sql+" order by version,create_Time desc"
+	#print(sql)
 	try:
 		
-	    cursor = conn.cursor()
+	    cursor = conn.cursor(buffered=True)
 	    cursor.execute(sql)
 	    result=cursor.fetchone()
 	    #result=[cursor.fetchone() for i in range(cursor.rowcount)]
         
 	    if result is not None:
+	    	cursor.close()
 	    	return result
+
 	    	
 	    else:
 	    	return None
@@ -210,9 +219,8 @@ def compareIfChange(conn,asset,pctThreshold,listTop,listPrev,totalCap=0): # ?nee
 				GonesizeHistory+=v1[0] # However board moving could be due to new bought more, old no sale
 		for listitem in listNew: # NEW ITEM MAY NOT BE IN DATABASE
 			if asset=='xdag':
-				print("xdag")
 				(prt1, readlist) = search("https://explorer.xdag.io/block/",listitem)
-					
+				print("len"+str(prt1))	
 				if len(prt1)>0:
 					new_count+=1
 					NewTotalsize+=float(prt1)
@@ -234,8 +242,8 @@ def compareIfChange(conn,asset,pctThreshold,listTop,listPrev,totalCap=0): # ?nee
 		print("%d %d %d" ,gone_count,new_count,retain_count)
 		return_set={'range':new_count+retain_count,
 	'gone':gone_count,'OldValueGone':GonesizeHistory/g2_count,'avgValueGone':GoneTotalsize/gone_count, 
-	'avgValueNew':NewTotalsize/new_count, 'OldValueofRetained':RetainedsizeHistory/retain_count,
-	'avgValueRetained':RetainedTotalsize/retain_count}
+	'NewTotalSize':NewTotalsize,'new_count':new_count, 'RetainedsizeHistory':RetainedsizeHistory,'retain_count':retain_count,
+	'RetainedTotalsize':RetainedTotalsize}
 	except Exception as err:
 		print ("summary err"+str(err))
 
@@ -256,4 +264,5 @@ if __name__ == '__main__':
 	config.read('dbconfig.ini')
 	dbconn=db_connect(config)
 	#print(getbalance(dbconn,'xdag','4DtNq71TeY9rdp/QX63mpNsEUu+xNSBv',0))
-	compareIfChange(dbconn,'xdag',0.05,['4DtNq71TeY9rdp/QX63mpNsEUu+xNSBv',],['dfKdPEdqac23INOdR/juDDY1LKFRePFk','U54RHG+snKt+rzpWVv/iN3ZOaXx3MZCJ'],totalCap=0)
+	print(compareIfChange(dbconn,'xdag',0.05,['4DtNq71TeY9rdp/QX63mpNsEUu+xNSBv','dfKdPEdqac23INOdR/juDDY1LKFRePFk','J6lQA7JsxAZOoeNC/e5521CH3teE3hUm'],['dfKdPEdqac23INOdR/juDDY1LKFRePFk','U54RHG+snKt+rzpWVv/iN3ZOaXx3MZCJ'],totalCap=0))
+
