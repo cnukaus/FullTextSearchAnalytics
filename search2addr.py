@@ -180,7 +180,7 @@ def write_db(conn,asset_type,address,balance,version,dt):
     args0 =(asset_type,address)
     
     query = "INSERT INTO balance_history(asset_type,address,balance,version,create_time) " \
-            "VALUES(%s,%s,%s,%s)"
+            "VALUES(%s,%s,%s,%s,%s)"
     args = (asset_type, address,balance,version,dt)
 
  
