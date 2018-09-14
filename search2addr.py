@@ -187,7 +187,7 @@ def write_db(conn,asset_type,address,balance,version,dt):
     try:
         
  
-        cursor = conn.cursor()
+        cursor = conn.cursor(buffered=True)
         cursor.execute(query0, args0)
         cursor.execute(query, args)
  
@@ -211,7 +211,7 @@ def get_info_db(sql,addr,version=0,date='1990-01-01'):
         dbconn = mysql.connector.connect(host='localhost',database='python_mysql',user='root',password='secret')
         if conn.is_connected():
             print('Connected to MySQL database')
-            cursor = dbconn.cursor()
+            cursor = dbconn.cursor(buffered=True)
             cursor.execute(sql)
             results = cursor.fetchall
             for row in results:
