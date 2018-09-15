@@ -12,6 +12,11 @@ import os
 import sys
 from positioncalc import getbalance
 
+import concurrent.futures
+import queue
+import threading
+
+
 
 
 # To add FirstTrans/LastTrans
@@ -197,6 +202,7 @@ def write_db(conn,asset_type,address,balance,version,dt):
             print('last insert id not found')
  
         conn.commit()
+        cursor.close
     except Error as error:
         print(error)
 #id,create_time,asset_type,address,balance,version,detail
@@ -327,14 +333,75 @@ def read1k():
 					written.append(row)
 			
 
-	
+def load_url(url):
+		global written
+		db=db_connect()
+		print(url)
+		row=url
+		(prt1, readlist) = search("https://explorer.xdag.io/block/",row)
+		v0=getbalance(db,'xdag',row,0)
+		if len(prt1)>0 and row not in written and (v0 is None or float(prt1)!=v0[0]): #either not in db, or value changed
+					write_db(db,'xdag',row,float(prt1),0,dt)  
+					written.append(row)
+		db.close()
+		#return handle_response(json,url,dbconn)
+def ThreadPoolExecutor():
+    return concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS)
+
+INTERVAL = 0.25 * 60
+
+# The number of worker threads
+MAX_WORKERS = 2
+
+# You should set up request headers
+# if you want to better evade anti-spider programs
+HEADERS = {
+    'Accept': '*/*',
+    'Accept-Encoding': 'gzip, deflate',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Cache-Control': 'max-age=0',
+    'Connection': 'keep-alive',
+    #'Host': None,
+    'If-Modified-Since': '0',
+    #'Referer': None,
+    'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.62 Safari/537.36',
+}
+
 		
 if __name__ == "__main__": ## If we are not importing this:
 #	calcprice('dfk balance.txt','pricefile.csv')
 
-	db=db_connect()
+	
 	#search("https://explorer.xdag.io/block/","YvcUHwI9iw2kGpXFwI9qAeUy+ni6D2+g")
-	read1k()
+	#read1k()
+	f = open(os.path.join(sys.path[0],"addrlist.csv"), 'r+')
+	data = f.read()
+	URLS = data.split('\n')
+	with ThreadPoolExecutor() as executor:
+	    if not URLS:
+	        raise RuntimeError('Please fill in the array `URLS` to start probing!')
+
+	    tasks = queue.Queue()
+
+	    for url in URLS:
+	        tasks.put_nowait(url)
+
+	    def wind_up(url):
+	        #print('wind_up(url={})'.format(url))
+	        tasks.put(url)
+
+	    i=0
+	    while True:
+	        url = tasks.get()
+
+	        # Work
+	        executor.submit(load_url,  url)
+	        i=i+1
+	        #print(i)
+
+	        threading.Timer(interval=INTERVAL, function=wind_up, args=(url,)).start()	
+
+
 	'''
 	dt=datetime.datetime.now()
 	rows = ['R2eJ1N88Zsu3u74qzo+IILkrTg9RkprK']
