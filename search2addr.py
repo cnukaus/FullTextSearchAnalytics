@@ -3,7 +3,6 @@ import urllib.request as urllib2
 import datetime
 import re
 import csv
-import ReadGoogle
 import configparser
 import mysql.connector
 from mysql.connector import Error
@@ -192,7 +191,6 @@ def write_db(conn,asset_type,address,balance,version,dt):
     try:
         
  
-        print(str(args))
         cursor = conn.cursor(buffered=True)
         cursor.execute(query0, args0)
         cursor.execute(query, args)
@@ -337,14 +335,11 @@ def read1k():
 def load_url(url):
 		global written
 		db=db_connect()
+		print(url)
 		row=url
 		(prt1, readlist) = search("https://explorer.xdag.io/block/",row)
 		v0=getbalance(db,'xdag',row,0)
-		#print(int(float(prt1)))
-		#print(int(v0[0]))
-		#print("written"+str(written))
-		if len(prt1)>0 and row not in written and (v0 is None or int(float(prt1))!=int(v0[0])): #either not in db, or value changed
-					print("write")
+		if len(prt1)>0 and row not in written and (v0 is None or float(prt1)!=v0[0]): #either not in db, or value changed
 					write_db(db,'xdag',row,float(prt1),0,dt)  
 					written.append(row)
 		db.close()
@@ -355,7 +350,7 @@ def ThreadPoolExecutor():
 INTERVAL = 0.25 * 60
 
 # The number of worker threads
-MAX_WORKERS = 2
+MAX_WORKERS = 12
 
 # You should set up request headers
 # if you want to better evade anti-spider programs
@@ -381,7 +376,6 @@ if __name__ == "__main__": ## If we are not importing this:
 	f = open(os.path.join(sys.path[0],"addrlist.csv"), 'r+')
 	data = f.read()
 	URLS = data.split('\n')
-	written=[]
 	with ThreadPoolExecutor() as executor:
 	    if not URLS:
 	        raise RuntimeError('Please fill in the array `URLS` to start probing!')
