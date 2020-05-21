@@ -23,3 +23,7 @@ or:with open("redlogin.txt","r") as f:
 try not use global variable as will have hidden implication spagetti, instead, use tuple or class objects:
 https://www.geeksforgeeks.org/g-fact-41-multiple-return-values-in-python/
 
+f"string" to do quick replacement
+f"a{var}b"
+"a"+var+"b"
+
