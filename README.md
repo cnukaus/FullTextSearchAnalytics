@@ -13,3 +13,13 @@ python "SearchCode.py" "folderPath" "keyword CaseInsensitive" "e:\result.csv"
 Search2addr.py is to search a xdag address list
 
 
+Here I have ini config reader, or
+#from .utils import read_yaml
+
+or:with open("redlogin.txt","r") as f:
+    mylist = f.read().splitlines() #remove line feed otherwise system won't like
+    userprod,passwordprod,key1,sec1=mylist  
+
+try not use global variable as will have hidden implication spagetti, instead, use tuple or class objects:
+https://www.geeksforgeeks.org/g-fact-41-multiple-return-values-in-python/
+
